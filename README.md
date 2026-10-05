@@ -1,4 +1,4 @@
-# Experimental Mango 🥭
+# expBoard 🥭
 
 A small, local-first Android keyboard experiment focused on **fast Hinglish typing, adaptive vocabulary and privacy**.
 
@@ -6,6 +6,7 @@ A small, local-first Android keyboard experiment focused on **fast Hinglish typi
 
 - Android InputMethodService
 - minimal dark/iOS-inspired UI
+- liquid-glass-inspired mango app icon
 - in-memory prefix trie
 - English + Hinglish vocabulary
 - personal word learning
@@ -22,7 +23,7 @@ A small, local-first Android keyboard experiment focused on **fast Hinglish typi
 
 ## Performance philosophy
 
-Experimental Mango deliberately chooses **instant deterministic behavior over slower "AI" behavior**.
+expBoard deliberately chooses **instant deterministic behavior over slower "AI" behavior**.
 
 Typing does not wait for:
 - a neural model;
@@ -31,13 +32,3 @@ Typing does not wait for:
 - background analysis.
 
 Vocabulary and phrase learning happen asynchronously while the IME is alive. A future small local model can analyze accumulated text and improve the dictionary in the background, but it must remain off the synchronous key path unless real-device benchmarks prove otherwise.
-
-## Build
-
-The repository contains one Actions workflow. It builds a debug APK and uploads it as a single artifact.
-
-## Install
-
-Install the APK, enable **Experimental Mango** under Android keyboard settings, then select it from the keyboard switcher.
-
-This is an experimental keyboard, not yet a production replacement for brrrBoard.
