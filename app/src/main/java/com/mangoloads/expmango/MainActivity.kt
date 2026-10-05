@@ -22,7 +22,7 @@ class MainActivity : Activity() {
         }
 
         val title = TextView(this).apply {
-            text = "Experimental Mango"
+            text = "expBoard"
             textSize = 28f
             setTextColor(0xFFF5F5F7.toInt())
             gravity = Gravity.CENTER
