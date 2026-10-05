@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Experimental Mango</string>
-    <string name="ime_name">Experimental Mango</string>
+    <string name="app_name">expBoard</string>
+    <string name="ime_name">expBoard</string>
     <string name="subtype_hinglish">Hinglish</string>
     <string name="open_input_settings">Open keyboard settings</string>
     <string name="instructions">Fast local-first Hinglish keyboard. Learning is asynchronous; sensitive fields disable learning and autocorrect.</string>
