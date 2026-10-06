@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -51,3 +51,13 @@ jobs:
           name: expBoard-debug
           path: expBoard-debug.apk
           retention-days: 14
+
+      - name: Create Release
+        if: success()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: expBoard-build-${{ github.run_number }}
+          name: expBoard-build-${{ github.run_number }}
+          files: expBoard-debug.apk
+          prerelease: true
+          generate_release_notes: true
