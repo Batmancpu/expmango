@@ -295,3 +295,18 @@ Suggested sequential phases:
 8. signed release and QA.
 
 A build is not "done" merely because WM Keyboard compiles. It is done when the APK can honestly be called EXP Mango.
+## No external product/repository dependencies
+
+The final EXP Mango product must not depend on another keyboard/product repository for its core prediction engine, learning algorithm, UI, theme system, toolbar or product behavior.
+
+Do not add HeliBoard, FlorisBoard, FUTO, AnySoftKeyboard, Nboard, another keyboard fork, an iOS clone, or any other competing keyboard/product as a dependency or copied product layer.
+
+Do not make the final app fetch source/assets/models at build time from arbitrary GitHub repositories.
+
+Any third-party library or model that is genuinely necessary must be explicitly reviewed for license, vendored or pinned reproducibly where appropriate, listed in THIRD_PARTY_NOTICES.md, and must not redefine EXP Mango's product identity.
+
+For the UI, implement the EXP Mango visual system directly in the existing Android/Compose codebase. Do not depend on an external "iOS keyboard" GitHub repository. The iOS-27-inspired look is a design target, not a source-code dependency.
+
+For prediction, learning, field policy and email-domain intelligence, implementation must live in EXP Mango source code. Do not solve those requirements by embedding another keyboard's engine.
+
+If a small local model is useful as an optional neural reranker, it must be an explicitly licensed, reproducibly packaged model used only as a local component. It must never be a cloud service, and the deterministic EXP engine must remain the functional fallback.
