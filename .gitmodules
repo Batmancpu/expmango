@@ -1,0 +1,3 @@
+[submodule "wmkeyboard"]
+	path = wmkeyboard
+	url = https://github.com/wasi-master/wmkeyboard.git

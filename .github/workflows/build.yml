@@ -1,16 +1,16 @@
-name: Build expBoard
+name: Build EXP Mango
 
 on:
   push:
-    branches: [main]
+    branches: [main, exp-mango-wm]
   workflow_dispatch:
 
 concurrency:
-  group: expboard-build
+  group: exp-mango-build
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -19,6 +19,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Java 17
         uses: actions/setup-java@v4
@@ -31,23 +33,31 @@ jobs:
         with:
           packages: platform-tools
 
-      - name: Install Android 35 SDK
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Install Android 36 SDK
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
 
-      - name: Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: 8.11.1
+      - name: Prepare EXP Mango source
+        run: bash scripts/prepare-exp-mango.sh
 
-      - name: Build APK
-        run: gradle assembleDebug --no-daemon
+      - name: Build EXP Mango Lite
+        run: cd wmkeyboard && ./gradlew assembleLiteEnDebug -Pwmkb.noInternet=true
 
-      - name: Rename APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk expBoard-debug.apk
+      - name: Collect APK
+        run: cp wmkeyboard/app/build/outputs/apk/liteEn/debug/app-liteEn-debug.apk EXP-Mango-debug.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: expBoard-debug
-          path: expBoard-debug.apk
+          name: EXP-Mango-debug
+          path: EXP-Mango-debug.apk
           retention-days: 14
+
+      - name: Create test Release
+        if: success()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: exp-mango-test-${{ github.run_number }}
+          name: EXP Mango Test ${{ github.run_number }}
+          files: EXP-Mango-debug.apk
+          prerelease: true
+          generate_release_notes: true
