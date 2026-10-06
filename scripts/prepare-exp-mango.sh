@@ -1,23 +1,69 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+export EXP_MANGO_VERSION_CODE="${GITHUB_RUN_NUMBER:-1}"
+export EXP_MANGO_VERSION_NAME="1.0.${EXP_MANGO_VERSION_CODE}"
+
 python3 - <<'PY'
 from pathlib import Path
 
 app = Path("wmkeyboard/app/build.gradle.kts")
 text = app.read_text()
-text = text.replace('applicationId = "com.wasimaster.wmkeyboard"', 'applicationId = "com.mangoloads.expmango"', 1)
+text = text.replace(
+    'applicationId = "com.wasimaster.wmkeyboard"',
+    'applicationId = "com.mangoloads.expmango"',
+    1,
+)
 app.write_text(text)
 
 strings = Path("wmkeyboard/app/src/main/res/values/strings.xml")
 text = strings.read_text()
-text = text.replace('<string name="app_name">WM Keyboard</string>', '<string name="app_name">EXP Mango</string>', 1)
-text = text.replace('<string name="app_name_short" translatable="false">WMK</string>', '<string name="app_name_short" translatable="false">EXP Mango</string>', 1)
+text = text.replace(
+    '<string name="app_name">WM Keyboard</string>',
+    '<string name="app_name">EXP Mango</string>',
+    1,
+)
+text = text.replace(
+    '<string name="app_name_short" translatable="false">WMK</string>',
+    '<string name="app_name_short" translatable="false">EXP Mango</string>',
+    1,
+)
 strings.write_text(text)
 
 props = Path("wmkeyboard/gradle.properties")
-text = props.read_text()
-text = text.replace("wmkb.versionName=0.5.13", "wmkb.versionName=1.0.0", 1)
-text = text.replace("wmkb.versionCode=29", "wmkb.versionCode=1", 1)
-props.write_text(text)
+lines = []
+for line in props.read_text().splitlines():
+    if line.startswith("wmkb.versionName="):
+        line = "wmkb.versionName=" + __import__("os").environ["EXP_MANGO_VERSION_NAME"]
+    elif line.startswith("wmkb.versionCode="):
+        line = "wmkb.versionCode=" + __import__("os").environ["EXP_MANGO_VERSION_CODE"]
+    lines.append(line)
+props.write_text("\n".join(lines) + "\n")
+
+dictionary = Path("wmkeyboard/app/dictionaries-src/en.txt")
+existing = dictionary.read_text().splitlines()
+seen = set()
+for line in existing:
+    if line and not line.lstrip().startswith("#"):
+        seen.add(line.split()[0].lower())
+
+custom_sources = [
+    Path("app/src/main/assets/dictionary.txt"),
+    Path("app/src/main/assets/hinglish.txt"),
+]
+extra = []
+for source in custom_sources:
+    for raw in source.read_text().splitlines():
+        word = raw.strip().lower()
+        if not word or word.startswith("#") or any(ch.isspace() for ch in word):
+            continue
+        if word not in seen:
+            seen.add(word)
+            extra.append(f"{word} 5000")
+
+if extra:
+    with dictionary.open("a") as out:
+        out.write("\n# EXP Mango custom English + Hinglish vocabulary\n")
+        out.write("\n".join(extra))
+        out.write("\n")
 PY
