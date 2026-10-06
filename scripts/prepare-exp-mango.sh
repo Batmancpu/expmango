@@ -91,4 +91,7 @@ fixed = """    fun wordPairsEnabledFor(langId: String): Boolean = langId !in wor
 """
 if broken in s:
     settings.write_text(s.replace(broken, fixed, 1))
-PY
+
+spellchecker = Path("wmkeyboard/app/src/main/res/xml/spellchecker.xml")
+spell = spellchecker.read_text()
+spellchecker.write_text(spell.replace('    android:supportsSentenceSpellCheck="true">','>'))
