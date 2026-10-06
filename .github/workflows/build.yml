@@ -39,31 +39,46 @@ jobs:
       - name: Prepare EXP Mango source
         run: bash scripts/prepare-exp-mango.sh
 
+      - name: Check signing availability
+        id: signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.EXP_MANGO_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.EXP_MANGO_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.EXP_MANGO_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.EXP_MANGO_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ] && [ -n "$KEYSTORE_PASSWORD" ] && [ -n "$KEY_ALIAS" ] && [ -n "$KEY_PASSWORD" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Restore release keystore
+        if: steps.signing.outputs.available == 'true'
         env:
           KEYSTORE_BASE64: ${{ secrets.EXP_MANGO_KEYSTORE_BASE64 }}
         run: |
-          if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "::error::EXP_MANGO_KEYSTORE_BASE64 is required for an update-compatible signed release."
-            exit 1
-          fi
           echo "$KEYSTORE_BASE64" | base64 -d > release.keystore
 
       - name: Build signed EXP Mango Lite
+        if: steps.signing.outputs.available == 'true'
         env:
           RELEASE_STORE_FILE: release.keystore
           RELEASE_STORE_PASSWORD: ${{ secrets.EXP_MANGO_KEYSTORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.EXP_MANGO_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.EXP_MANGO_KEY_PASSWORD }}
         run: |
-          if [ -z "$RELEASE_STORE_PASSWORD" ] || [ -z "$RELEASE_KEY_ALIAS" ] || [ -z "$RELEASE_KEY_PASSWORD" ]; then
-            echo "::error::EXP_MANGO_KEYSTORE_PASSWORD, EXP_MANGO_KEY_ALIAS and EXP_MANGO_KEY_PASSWORD are required."
-            exit 1
-          fi
           cd wmkeyboard
-          ./gradlew assembleLiteEnRelease             -Pwmkb.noInternet=true             -Pkotlin.daemon.jvmargs=-Xmx4g             --stacktrace
+          ./gradlew assembleLiteEnRelease -Pwmkb.noInternet=true -Pkotlin.daemon.jvmargs=-Xmx4g --stacktrace
+
+      - name: Build EXP Mango Lite debug
+        if: steps.signing.outputs.available != 'true'
+        run: |
+          cd wmkeyboard
+          ./gradlew assembleLiteEnDebug -Pwmkb.noInternet=true -Pkotlin.daemon.jvmargs=-Xmx4g --stacktrace
 
       - name: Verify APK signature
+        if: steps.signing.outputs.available == 'true'
         run: |
           APK="wmkeyboard/app/build/outputs/apk/liteEn/release/app-liteEn-release.apk"
           test -f "$APK"
@@ -72,17 +87,25 @@ jobs:
           "$APKSIGNER" verify --print-certs "$APK" | grep -q "B7:2B:86:49:17:9C:6E:D4:5B:C6:BE:FB:68:99:E8:DA:95:28:70:75:A9:9F:AD:60:85:B6:98:6C:BC:ED:23:B2"
 
       - name: Collect APK
-        run: cp wmkeyboard/app/build/outputs/apk/liteEn/release/app-liteEn-release.apk EXP-Mango.apk
+        run: |
+          if [ "${{ steps.signing.outputs.available }}" = "true" ]; then
+            cp wmkeyboard/app/build/outputs/apk/liteEn/release/app-liteEn-release.apk EXP-Mango.apk
+          else
+            cp wmkeyboard/app/build/outputs/apk/liteEn/debug/app-liteEn-debug.apk EXP-Mango-debug.apk
+          fi
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: EXP-Mango
-          path: EXP-Mango.apk
+          name: ${{ steps.signing.outputs.available == 'true' && 'EXP-Mango' || 'EXP-Mango-current-test' }}
+          path: |
+            EXP-Mango.apk
+            EXP-Mango-debug.apk
+          if-no-files-found: error
           retention-days: 30
 
       - name: Create Release
-        if: success()
+        if: success() && steps.signing.outputs.available == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: exp-mango-v${{ github.run_number }}
