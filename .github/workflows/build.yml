@@ -91,7 +91,9 @@ jobs:
           if [ "${{ steps.signing.outputs.available }}" = "true" ]; then
             cp wmkeyboard/app/build/outputs/apk/liteEn/release/app-liteEn-release.apk EXP-Mango.apk
           else
-            cp wmkeyboard/app/build/outputs/apk/liteEn/debug/app-liteEn-debug.apk EXP-Mango-debug.apk
+            APK="$(find wmkeyboard/app/build/outputs/apk -type f -path '*/debug/*.apk' -print -quit)"
+            test -n "$APK"
+            cp "$APK" EXP-Mango-debug.apk
           fi
 
       - name: Upload APK
