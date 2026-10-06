@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760">
+  <rect width="1200" height="760" rx="36" fill="#111114"/>
+  <text x="60" y="72" fill="#F4F4F7" font-size="34" font-family="sans-serif" font-weight="700">EXP Mango — interaction reference</text>
+  <text x="60" y="108" fill="#A5A5AE" font-size="18" font-family="sans-serif">Offline • predictive • adaptive • privacy-first</text>
+
+  <rect x="40" y="145" width="1120" height="575" rx="30" fill="#1A1A1F"/>
+  <rect x="70" y="170" width="1060" height="62" rx="20" fill="#242428"/>
+  <circle cx="100" cy="201" r="10" fill="#6C5CE7"/>
+  <text x="124" y="208" fill="#F4F4F7" font-size="18" font-family="sans-serif" font-weight="600">because</text>
+  <text x="340" y="208" fill="#A5A5AE" font-size="18" font-family="sans-serif">became</text>
+  <text x="520" y="208" fill="#A5A5AE" font-size="18" font-family="sans-serif">become</text>
+  <rect x="935" y="182" width="166" height="38" rx="19" fill="#FFE2BE"/>
+  <text x="968" y="207" fill="#8B4A00" font-size="15" font-family="sans-serif" font-weight="700">EXP Mango</text>
+
+  <g font-family="sans-serif" font-size="24" fill="#17171A" text-anchor="middle">
+    <rect x="85" y="257" width="88" height="62" rx="14" fill="#FFFFFF"/><text x="129" y="297">Q</text>
+    <rect x="183" y="257" width="88" height="62" rx="14" fill="#FFFFFF"/><text x="227" y="297">W</text>
+    <rect x="281" y="257" width="88" height="62" rx="14" fill="#FFFFFF"/><text x="325" y="297">E</text>
+    <rect x="379" y="257" width="88" height="62" rx="14" fill="#FFFFFF"/><text x="423" y="297">R</text>
+    <rect x="477" y="257" width="88" height="62" rx="14" fill="#FFFFFF"/><text x="521" y="297">T</text>
+    <rect x="575" y="257" width="88" height="62" rx="14" fill="#FFFFFF"/><text x="619" y="297">Y</text>
+    <rect x="673" y="257" width="88" height="62" rx="14" fill="#FFFFFF"/><text x="717" y="297">U</text>
+    <rect x="771" y="257" width="88" height="62" rx="14" fill="#FFFFFF"/><text x="815" y="297">I</text>
+    <rect x="869" y="257" width="88" height="62" rx="14" fill="#FFFFFF"/><text x="913" y="297">O</text>
+    <rect x="967" y="257" width="88" height="62" rx="14" fill="#FFFFFF"/><text x="1011" y="297">P</text>
+
+    <rect x="129" y="331" width="88" height="62" rx="14" fill="#FFFFFF"/><text x="173" y="371">A</text>
+    <rect x="227" y="331" width="88" height="62" rx="14" fill="#FFFFFF"/><text x="271" y="371">S</text>
+    <rect x="325" y="331" width="88" height="62" rx="14" fill="#FFFFFF"/><text x="369" y="371">D</text>
+    <rect x="423" y="331" width="88" height="62" rx="14" fill="#FFFFFF"/><text x="467" y="371">F</text>
+    <rect x="521" y="331" width="88" height="62" rx="14" fill="#FFFFFF"/><text x="565" y="371">G</text>
+    <rect x="619" y="331" width="88" height="62" rx="14" fill="#FFFFFF"/><text x="663" y="371">H</text>
+    <rect x="717" y="331" width="88" height="62" rx="14" fill="#FFFFFF"/><text x="761" y="371">J</text>
+    <rect x="815" y="331" width="88" height="62" rx="14" fill="#FFFFFF"/><text x="859" y="371">K</text>
+    <rect x="913" y="331" width="88" height="62" rx="14" fill="#FFFFFF"/><text x="957" y="371">L</text>
+
+    <rect x="165" y="405" width="88" height="62" rx="14" fill="#FFFFFF"/><text x="209" y="445">Z</text>
+    <rect x="263" y="405" width="88" height="62" rx="14" fill="#FFFFFF"/><text x="307" y="445">X</text>
+    <rect x="361" y="405" width="88" height="62" rx="14" fill="#FFFFFF"/><text x="405" y="445">C</text>
+    <rect x="459" y="405" width="88" height="62" rx="14" fill="#FFFFFF"/><text x="503" y="445">V</text>
+    <rect x="557" y="405" width="88" height="62" rx="14" fill="#FFFFFF"/><text x="601" y="445">B</text>
+    <rect x="655" y="405" width="88" height="62" rx="14" fill="#FFFFFF"/><text x="699" y="445">N</text>
+    <rect x="753" y="405" width="88" height="62" rx="14" fill="#FFFFFF"/><text x="797" y="445">M</text>
+
+    <rect x="85" y="493" width="116" height="66" rx="16" fill="#303036"/><text x="143" y="535" fill="#F4F4F7">⇧</text>
+    <rect x="211" y="493" width="116" height="66" rx="16" fill="#303036"/><text x="269" y="535" fill="#F4F4F7">⌫</text>
+    <rect x="337" y="493" width="480" height="66" rx="16" fill="#FFFFFF"/><text x="577" y="535">space</text>
+    <rect x="827" y="493" width="116" height="66" rx="16" fill="#303036"/><text x="885" y="535" fill="#F4F4F7">☺</text>
+    <rect x="953" y="493" width="177" height="66" rx="16" fill="#FF9F2D"/><text x="1041" y="535">↵</text>
+  </g>
+
+  <rect x="70" y="590" width="1060" height="92" rx="22" fill="#242428"/>
+  <text x="96" y="628" fill="#A5A5AE" font-family="sans-serif" font-size="17">EMAIL EXAMPLE</text>
+  <rect x="96" y="642" width="180" height="26" rx="13" fill="#3A3A42"/>
+  <text x="111" y="660" fill="#F4F4F7" font-family="sans-serif" font-size="14">gmail.com</text>
+  <rect x="286" y="642" width="180" height="26" rx="13" fill="#3A3A42"/>
+  <text x="301" y="660" fill="#F4F4F7" font-family="sans-serif" font-size="14">outlook.com</text>
+  <rect x="476" y="642" width="180" height="26" rx="13" fill="#3A3A42"/>
+  <text x="491" y="660" fill="#F4F4F7" font-family="sans-serif" font-size="14">company.in</text>
+  <text x="710" y="661" fill="#A5A5AE" font-family="sans-serif" font-size="15">Incognito → lock badge • 3–5 candidates • no online tools</text>
+</svg>

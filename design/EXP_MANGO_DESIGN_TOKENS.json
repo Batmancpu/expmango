@@ -1,0 +1,77 @@
+{
+  "product": "EXP Mango",
+  "version": 1,
+  "visualDirection": "modern premium smartphone keyboard; iOS-27-inspired principles without copying Apple assets",
+  "geometry": {
+    "keyCornerRadiusDp": 12,
+    "keyGapDp": 6,
+    "keyHeightDp": 48,
+    "suggestionHeightDp": 42,
+    "toolbarHeightDp": 42,
+    "keyboardHorizontalPaddingDp": 6,
+    "bottomRowKeyHeightDp": 50,
+    "longPressPopupRadiusDp": 16
+  },
+  "motion": {
+    "pressScale": 0.96,
+    "pressDurationMs": 70,
+    "releaseDurationMs": 90,
+    "suggestionCrossfadeMs": 100,
+    "reducedMotionRespectSystem": true
+  },
+  "light": {
+    "surface": "#F5F5F7",
+    "key": "#FFFFFF",
+    "keySecondary": "#E9E9ED",
+    "keyPressed": "#D8D8DE",
+    "text": "#17171A",
+    "textSecondary": "#66666D",
+    "divider": "#D4D4DA",
+    "accent": "#FF9F2D",
+    "accentStrong": "#E97800",
+    "accentSoft": "#FFE2BE",
+    "suggestionPrimary": "#FFFFFF",
+    "suggestionSecondary": "#EFEFF2",
+    "privacy": "#6C5CE7"
+  },
+  "dark": {
+    "surface": "#111114",
+    "key": "#242428",
+    "keySecondary": "#303036",
+    "keyPressed": "#3C3C44",
+    "text": "#F4F4F7",
+    "textSecondary": "#A5A5AE",
+    "divider": "#3A3A42",
+    "accent": "#FFB24A",
+    "accentStrong": "#FF9F2D",
+    "accentSoft": "#51391E",
+    "suggestionPrimary": "#2B2B31",
+    "suggestionSecondary": "#1C1C20",
+    "privacy": "#A99BFF"
+  },
+  "typography": {
+    "keyLabelSp": 20,
+    "secondaryLabelSp": 12,
+    "suggestionSp": 16,
+    "toolbarIconSp": 20,
+    "privacyBadgeSp": 11
+  },
+  "suggestionStrip": {
+    "candidateCount": 3,
+    "maxCandidateCount": 5,
+    "primaryWeight": 700,
+    "secondaryWeight": 500,
+    "showUndoAfterAutocorrect": true,
+    "showPrivacyBadgeInIncognito": true,
+    "showDomainChipsInEmailFields": true
+  },
+  "principles": [
+    "prediction is the main surface",
+    "no oversized toolbox",
+    "pressed feedback is immediate",
+    "motion is subtle",
+    "light and dark are equally designed",
+    "privacy state is visible",
+    "visual polish must not compromise typing latency"
+  ]
+}
