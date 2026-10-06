@@ -66,4 +66,29 @@ if extra:
         out.write("\n# EXP Mango custom English + Hinglish vocabulary\n")
         out.write("\n".join(extra))
         out.write("\n")
+
+# The pinned WM upstream commit currently has a one-line class-brace regression
+# around phoneticCandidateListFor(). Repair it in the build workspace only so
+# we can build against the pinned source without maintaining a forked submodule.
+settings = Path("wmkeyboard/core/settings/src/main/java/com/wasimaster/wmkeyboard/core/settings/SettingsRepository.kt")
+s = settings.read_text()
+broken = """    fun wordPairsEnabledFor(langId: String): Boolean = langId !in wordPairsOffLangs
+}
+    /** Where [langId]'s phonetic layout shows its candidate list; OFF for no phonetic layout. */
+    fun phoneticCandidateListFor(langId: String?): PhoneticCandidateList =
+        langId?.let { phoneticCandidateLists[it] } ?: PhoneticCandidateList.OFF
+
+
+"""
+fixed = """    fun wordPairsEnabledFor(langId: String): Boolean = langId !in wordPairsOffLangs
+
+    /** Where [langId]'s phonetic layout shows its candidate list; OFF for no phonetic layout. */
+    fun phoneticCandidateListFor(langId: String?): PhoneticCandidateList =
+        langId?.let { phoneticCandidateLists[it] } ?: PhoneticCandidateList.OFF
+
+}
+
+"""
+if broken in s:
+    settings.write_text(s.replace(broken, fixed, 1))
 PY
