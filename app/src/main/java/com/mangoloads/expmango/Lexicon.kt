@@ -23,7 +23,9 @@ class PrefixTrie {
         var node = root
         for (c in word) {
             node = node.children.getOrPut(c) { Node() }
-            if (node.words.size < 32 && !node.words.contains(word)) node.words.add(word)
+            if (node.words.size < 48 && !node.words.contains(word)) {
+                node.words.add(word)
+            }
         }
     }
 
@@ -44,7 +46,7 @@ class Lexicon {
 
     fun add(word: String, frequency: Int = 1) {
         val w = word.trim().lowercase(Locale.ROOT)
-        if (w.length < 2 || w.any { it.isWhitespace() }) return
+        if (w.length < 1 || w.any { it.isWhitespace() }) return
         val existing = words[w]
         if (existing != null) {
             existing.frequency += frequency.coerceAtLeast(1)
@@ -72,7 +74,7 @@ class Lexicon {
         val first = w.firstOrNull() ?: return emptyList()
         val result = ArrayList<String>(48)
 
-        for (length in maxOf(2, w.length - 2)..w.length + 2) {
+        for (length in maxOf(1, w.length - 2)..w.length + 2) {
             val bucket = buckets[bucketKey(first, length)] ?: continue
             synchronized(bucket) {
                 for (candidate in bucket) {
@@ -93,7 +95,7 @@ class Lexicon {
         bucketKey(word.firstOrNull() ?: '_', word.length)
 
     private fun bucketKey(first: Char, length: Int): String =
-        first.toString() + ":" + length
+        "$first:$length"
 
     private fun boundedDistance(a: String, b: String, max: Int): Int {
         if (abs(a.length - b.length) > max) return max + 1

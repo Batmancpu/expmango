@@ -3,261 +3,289 @@ package com.mangoloads.expmango
 import android.content.Context
 import java.io.File
 import java.util.Locale
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.Executors
-import java.util.concurrent.ScheduledExecutorService
-import java.util.concurrent.ScheduledFuture
-import java.util.concurrent.TimeUnit
-import kotlin.math.abs
 
-data class Prediction(
+data class Candidate(
     val word: String,
-    val score: Int,
-    val reason: String
+    val score: Double,
+    val type: String = "prediction"
 )
 
 class PredictionEngine(context: Context) {
+
     private val appContext = context.applicationContext
     private val lexicon = Lexicon()
-    private val bigrams =
-        ConcurrentHashMap<String, ConcurrentHashMap<String, Int>>()
-
-    private val executor: ScheduledExecutorService =
-        Executors.newSingleThreadScheduledExecutor()
-
-    private var saveFuture: ScheduledFuture<*>? = null
-
-    @Volatile
-    private var dirty = false
-
-    private val userFile = File(appContext.filesDir, "mango_words.tsv")
-    private val bigramFile = File(appContext.filesDir, "mango_bigrams.tsv")
+    val emailDomainProvider = EmailDomainProvider()
+    val dictionaryManager = DictionaryManager(appContext)
+    val learningEngine = LearningEngine(appContext)
 
     init {
-        loadAsset("dictionary.txt")
-        loadAsset("hinglish.txt")
-        loadUserData()
+        loadAssets()
+        loadCustomDictionary()
     }
 
-    fun suggestions(prefix: String, previous: String?, limit: Int = 3): List<Prediction> {
-        val p = prefix.lowercase(Locale.ROOT)
-        if (p.isBlank()) return nextWord(previous, limit)
+    fun suggestions(
+        input: String,
+        previous1: String? = null,
+        previous2: String? = null,
+        policy: FieldPolicy = FieldPolicyResolver.resolve(FieldMode.NORMAL),
+        limit: Int = 3
+    ): List<Candidate> {
+        if (policy.isPrivate && (policy.mode == FieldMode.PASSWORD || policy.mode == FieldMode.PIN || policy.mode == FieldMode.OTP)) {
+            return emptyList()
+        }
 
-        return lexicon.prefix(p, 24)
-            .map { word ->
-                var score = 100 - (word.length - p.length) * 3
-                score += minOf(lexicon.frequency(word), 30)
-                val context = previous?.let {
-                    bigrams[it.lowercase(Locale.ROOT)]?.get(word) ?: 0
-                } ?: 0
-                score += minOf(context * 5, 25)
-                Prediction(word, score, "prefix")
+        if (policy.showDomainChips && input.contains('@')) {
+            val domains = emailDomainProvider.getDomainSuggestions(input, limit)
+            return domains.map { Candidate(it, 100.0, "email-domain") }
+        }
+
+        val token = input.trim().lowercase(Locale.ROOT)
+
+        if (token.isBlank()) {
+            return getContextNextWords(previous1, previous2, limit)
+        }
+
+        val candidates = mutableMapOf<String, Candidate>()
+
+        val prefixMatches = lexicon.prefix(token, 24)
+        prefixMatches.forEach { word ->
+            val score = scoreCandidate(word, token, previous1, previous2, policy)
+            candidates[word] = Candidate(word, score, "prefix")
+        }
+
+        if (policy.canAutocorrect) {
+            TypoEngine.exactTypos[token]?.let { fixed ->
+                val score = 100.0
+                candidates[fixed] = Candidate(fixed, score, "autocorrect")
             }
+        }
+
+        if (candidates.size < limit && policy.canAutocorrect && token.length >= 3 && !lexicon.contains(token)) {
+            val fuzzy = lexicon.fuzzyCandidates(token)
+            fuzzy.forEach { word ->
+                if (!candidates.containsKey(word)) {
+                    val score = scoreCandidate(word, token, previous1, previous2, policy)
+                    candidates[word] = Candidate(word, score, "typo")
+                }
+            }
+        }
+
+        return candidates.values
             .sortedByDescending { it.score }
             .take(limit)
     }
 
-    fun nextWord(previous: String?, limit: Int = 3): List<Prediction> {
-        val key = previous?.trim()?.lowercase(Locale.ROOT).orEmpty()
-        if (key.isBlank()) return emptyList()
+    fun correct(
+        typed: String,
+        previous1: String? = null,
+        previous2: String? = null,
+        policy: FieldPolicy = FieldPolicyResolver.resolve(FieldMode.NORMAL)
+    ): Candidate? {
+        val original = typed.trim()
+        if (original.isBlank()) return null
 
-        return (bigrams[key] ?: return emptyList())
-            .entries
-            .sortedByDescending { it.value }
-            .take(limit)
-            .map { Prediction(it.key, it.value, "learned phrase") }
-    }
-
-    fun correct(word: String, previous: String?): Prediction? {
-        val original = word.trim()
-        if (original.length < 3) return null
-        if (original.any { !it.isLetter() }) return null
-        if (original.all { it.isUpperCase() }) return null
-        if (lexicon.contains(original)) return null
+        if (!policy.canAutocorrect || policy.mode in setOf(
+                FieldMode.URI,
+                FieldMode.EMAIL,
+                FieldMode.CODE,
+                FieldMode.TERMINAL,
+                FieldMode.PASSWORD,
+                FieldMode.PIN,
+                FieldMode.OTP
+            )
+        ) {
+            return null
+        }
 
         val lower = original.lowercase(Locale.ROOT)
 
-        val exactTypos = mapOf(
-            "teh" to "the",
-            "hte" to "the",
-            "adn" to "and",
-            "nad" to "and",
-            "taht" to "that",
-            "thier" to "their",
-            "wierd" to "weird",
-            "becuase" to "because",
-            "beacuse" to "because",
-            "recieve" to "receive",
-            "seperate" to "separate",
-            "definately" to "definitely",
-            "occured" to "occurred",
-            "goign" to "going",
-            "woudl" to "would",
-            "dont" to "don't",
-            "cant" to "can't",
-            "wont" to "won't",
-            "im" to "I'm",
-            "ive" to "I've"
-        )
-
-        exactTypos[lower]?.let {
-            return Prediction(it, 100, "known typo")
+        if (lexicon.contains(lower) || learningEngine.containsWord(lower)) {
+            return null
         }
 
+        TypoEngine.exactTypos[lower]?.let { fixed ->
+            return Candidate(fixed, 100.0, "exact-typo")
+        }
+
+        if (lower.length < 3) return null
+
         val candidates = lexicon.fuzzyCandidates(lower)
-        if (candidates.isEmpty()) return null
+        var bestCandidate: String? = null
+        var minDistance = 3.0
 
-        val best = candidates.maxByOrNull { candidate ->
-            val d = distance(lower, candidate)
-            val freq = lexicon.frequency(candidate)
-            val context = previous?.let {
-                bigrams[it.lowercase(Locale.ROOT)]?.get(candidate) ?: 0
-            } ?: 0
-            40 - d * 12 + minOf(freq, 40) + minOf(context * 4, 24)
-        } ?: return null
+        for (cand in candidates) {
+            val dist = TypoEngine.editDistance(lower, cand)
+            if (dist < minDistance) {
+                minDistance = dist
+                bestCandidate = cand
+            }
+        }
 
-        val d = distance(lower, best)
-        val contextBoost = previous?.let {
-            (bigrams[it.lowercase(Locale.ROOT)]?.get(best) ?: 0) * 4
-        } ?: 0
-        val score = 70 + contextBoost + minOf(lexicon.frequency(best), 20) - d * 12
-
-        return if (score >= 58) Prediction(best, score, "fast fuzzy") else null
+        return bestCandidate?.let {
+            Candidate(it, 80.0 - minDistance * 10, "fuzzy-autocorrect")
+        }
     }
 
-    fun glide(raw: String, previous: String?): Prediction? {
+    fun glide(
+        raw: String,
+        previous1: String? = null,
+        policy: FieldPolicy = FieldPolicyResolver.resolve(FieldMode.NORMAL)
+    ): Candidate? {
         val seq = raw.lowercase(Locale.ROOT)
         if (seq.length < 3) return null
 
         return lexicon.fuzzyCandidates(seq)
             .map { word ->
-                val d = distance(seq, word)
+                val dist = TypoEngine.editDistance(seq, word)
                 val freq = lexicon.frequency(word)
-                val context = previous?.let {
-                    bigrams[it.lowercase(Locale.ROOT)]?.get(word) ?: 0
-                } ?: 0
-                Prediction(
-                    word,
-                    85 - d * 10 + minOf(freq, 25) + minOf(context * 5, 20),
-                    "glide"
-                )
+                Candidate(word, 85.0 - dist * 10.0 + minOf(freq, 25), "glide")
             }
             .maxByOrNull { it.score }
-            ?.takeIf { it.score >= 48 }
+            ?.takeIf { it.score >= 48.0 }
     }
 
-    fun learn(word: String, previous: String?) {
+    fun learn(
+        word: String,
+        previous1: String? = null,
+        previous2: String? = null,
+        policy: FieldPolicy = FieldPolicyResolver.resolve(FieldMode.NORMAL)
+    ) {
+        if (!policy.canLearn || policy.isPrivate) return
         val clean = word.trim().lowercase(Locale.ROOT)
-        if (clean.length < 2 || clean.any { it.isWhitespace() }) return
+        if (clean.isBlank()) return
 
         lexicon.add(clean)
+        learningEngine.learnWord(clean, policy)
 
-        previous?.trim()?.lowercase(Locale.ROOT)?.takeIf { it.isNotEmpty() }?.let { prev ->
-            val map = bigrams.computeIfAbsent(prev) {
-                ConcurrentHashMap()
-            }
-            map.compute(clean) { _, value -> (value ?: 0) + 1 }
+        val p1 = previous1?.trim()?.lowercase(Locale.ROOT)
+        val p2 = previous2?.trim()?.lowercase(Locale.ROOT)
+
+        if (!p1.isNullOrEmpty()) {
+            learningEngine.learnBigram(p1, clean, policy)
         }
-
-        dirty = true
-        scheduleSave()
+        if (!p1.isNullOrEmpty() && !p2.isNullOrEmpty()) {
+            learningEngine.learnTrigram(p2, p1, clean, policy)
+        }
     }
 
     fun shutdown() {
-        saveNow()
-        executor.shutdownNow()
+        learningEngine.shutdown()
     }
 
-    private fun scheduleSave() {
-        saveFuture?.cancel(false)
-        saveFuture = executor.schedule({
-            saveNow()
-        }, 900, TimeUnit.MILLISECONDS)
-    }
+    private fun getContextNextWords(
+        previous1: String?,
+        previous2: String?,
+        limit: Int
+    ): List<Candidate> {
+        val candidates = mutableListOf<Candidate>()
 
-    private fun saveNow() {
-        if (!dirty) return
+        val p1 = previous1?.trim()?.lowercase(Locale.ROOT)
+        val p2 = previous2?.trim()?.lowercase(Locale.ROOT)
 
-        try {
-            userFile.printWriter().use { out ->
-                for (word in lexicon.allWords().sorted()) {
-                    out.println(word + "\t" + lexicon.frequency(word))
-                }
+        if (!p1.isNullOrEmpty() && !p2.isNullOrEmpty()) {
+            val triResults = learningEngine.getTrigramNext(p2, p1, limit)
+            triResults.forEach { (word, count) ->
+                candidates.add(Candidate(word, 90.0 + count, "trigram"))
             }
-
-            bigramFile.printWriter().use { out ->
-                for ((prev, map) in bigrams) {
-                    for ((next, count) in map) {
-                        out.println(prev + "\t" + next + "\t" + count)
-                    }
-                }
-            }
-
-            dirty = false
-        } catch (_: Exception) {
-            // Never let persistence affect typing.
         }
+
+        if (candidates.size < limit && !p1.isNullOrEmpty()) {
+            val biResults = learningEngine.getBigramNext(p1, limit - candidates.size)
+            biResults.forEach { (word, count) ->
+                if (candidates.none { it.word == word }) {
+                    candidates.add(Candidate(word, 70.0 + count, "bigram"))
+                }
+            }
+        }
+
+        if (candidates.size < limit && !p1.isNullOrEmpty()) {
+            val fallbacks = when (p1) {
+                "going" -> listOf("to", "home", "back")
+                "not" -> listOf("sure", "yet", "ready")
+                "is" -> listOf("the", "a", "not")
+                "rights" -> listOf("and", "in", "for")
+                "fundamental" -> listOf("rights")
+                "polity" -> listOf("upsc", "and")
+                "open" -> listOf("ai")
+                "climate" -> listOf("change")
+                "monetary" -> listOf("policy")
+                "repo" -> listOf("rate")
+                else -> emptyList()
+            }
+            fallbacks.forEach { fb ->
+                if (candidates.none { it.word == fb }) {
+                    candidates.add(Candidate(fb, 50.0, "context-fallback"))
+                }
+            }
+        }
+
+        return candidates.take(limit)
     }
 
-    private fun loadAsset(name: String) {
+    private fun scoreCandidate(
+        word: String,
+        prefix: String,
+        previous1: String?,
+        previous2: String?,
+        policy: FieldPolicy
+    ): Double {
+        var score = 50.0
+
+        val lenDiff = word.length - prefix.length
+        score -= lenDiff * 2.0
+
+        val globalFreq = lexicon.frequency(word)
+        val personalFreq = learningEngine.getWordFrequency(word)
+        score += minOf(globalFreq, 30) * 0.5
+        score += minOf(personalFreq, 50) * 1.0
+
+        val p1 = previous1?.trim()?.lowercase(Locale.ROOT)
+        if (!p1.isNullOrEmpty()) {
+            val biMap = learningEngine.getBigramNext(p1, 10).toMap()
+            val biCount = biMap[word] ?: 0
+            score += minOf(biCount * 5, 25)
+        }
+
+        return score
+    }
+
+    private fun loadAssets() {
+        loadAssetFile("dictionary.txt")
+        loadAssetFile("hinglish.txt")
+    }
+
+    private fun loadAssetFile(filename: String) {
         try {
-            appContext.assets.open(name).bufferedReader().useLines { lines ->
+            appContext.assets.open(filename).bufferedReader().useLines { lines ->
                 lines.forEach { line ->
-                    val word = line.trim().lowercase(Locale.ROOT)
-                    if (word.isNotEmpty() && !word.startsWith("#")) lexicon.add(word)
-                }
-            }
-        } catch (_: Exception) {
-        }
-    }
-
-    private fun loadUserData() {
-        try {
-            if (userFile.exists()) {
-                userFile.forEachLine { line ->
-                    val parts = line.split('\t')
-                    if (parts.size >= 2) {
-                        lexicon.add(parts[0], parts[1].toIntOrNull() ?: 1)
-                    }
-                }
-            }
-
-            if (bigramFile.exists()) {
-                bigramFile.forEachLine { line ->
-                    val parts = line.split('\t')
-                    if (parts.size >= 3) {
-                        val map = bigrams.computeIfAbsent(parts[0]) {
-                            ConcurrentHashMap()
-                        }
-                        map[parts[1]] = parts[2].toIntOrNull() ?: 1
+                    val trimmed = line.trim().lowercase(Locale.ROOT)
+                    if (trimmed.isNotBlank() && !trimmed.startsWith("#")) {
+                        val parts = trimmed.split(Regex("\\s+"))
+                        val word = parts[0]
+                        val freq = parts.getOrNull(1)?.toIntOrNull() ?: 1
+                        lexicon.add(word, freq)
                     }
                 }
             }
         } catch (_: Exception) {
+            val file = File("app/src/main/assets/$filename").takeIf { it.exists() }
+                ?: File("src/main/assets/$filename").takeIf { it.exists() }
+            file?.forEachLine { line ->
+                val trimmed = line.trim().lowercase(Locale.ROOT)
+                if (trimmed.isNotBlank() && !trimmed.startsWith("#")) {
+                    val parts = trimmed.split(Regex("\\s+"))
+                    val word = parts[0]
+                    val freq = parts.getOrNull(1)?.toIntOrNull() ?: 1
+                    lexicon.add(word, freq)
+                }
+            }
         }
     }
 
-    private fun distance(a: String, b: String): Int {
-        if (a == b) return 0
-        if (abs(a.length - b.length) > 3) return 4
-
-        var prev = IntArray(b.length + 1) { it }
-        var cur = IntArray(b.length + 1)
-
-        for (i in a.indices) {
-            cur[0] = i + 1
-            for (j in b.indices) {
-                val cost = if (a[i] == b[j]) 0 else 1
-                cur[j + 1] = minOf(
-                    cur[j] + 1,
-                    prev[j + 1] + 1,
-                    prev[j] + cost
-                )
-            }
-            val tmp = prev
-            prev = cur
-            cur = tmp
+    private fun loadCustomDictionary() {
+        val custom = dictionaryManager.getWords()
+        custom.forEach { cw ->
+            lexicon.add(cw.word, cw.frequency)
         }
-        return prev[b.length]
     }
 }
