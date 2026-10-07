@@ -10,7 +10,7 @@ class MangoImeService : InputMethodService() {
     private lateinit var engine: PredictionEngine
     private lateinit var keyboard: MangoKeyboardView
 
-    private var inputContext = ImeContext("", InputPolicy.NORMAL)
+    private var fieldPolicy = FieldPolicyResolver.resolve(FieldMode.NORMAL)
     private var wordBuffer = StringBuilder()
     private var lastAutoCorrection: Pair<String, String>? = null
     private var shift = false
@@ -28,7 +28,7 @@ class MangoImeService : InputMethodService() {
 
     override fun onStartInput(info: EditorInfo?, restarting: Boolean) {
         super.onStartInput(info, restarting)
-        inputContext = ImeContext.from(info)
+        fieldPolicy = FieldPolicyResolver.fromEditorInfo(info)
         wordBuffer = StringBuilder()
         lastAutoCorrection = null
         shift = false
@@ -87,14 +87,14 @@ class MangoImeService : InputMethodService() {
         val typed = wordBuffer.toString()
         val previous = previousWord(ic)
 
-        if (inputContext.canCorrect) {
-            engine.correct(typed, previous)?.let { correction ->
+        if (fieldPolicy.canAutocorrect) {
+            engine.correct(typed, previous, policy = fieldPolicy)?.let { correction ->
                 if (correction.word.lowercase(Locale.ROOT) != typed.lowercase(Locale.ROOT)) {
                     ic.deleteSurroundingText(typed.length, 0)
                     ic.commitText(correction.word + " ", 1)
                     lastAutoCorrection = typed to correction.word
-                    if (inputContext.canLearn) {
-                        engine.learn(correction.word, previous)
+                    if (fieldPolicy.canLearn) {
+                        engine.learn(correction.word, previous, policy = fieldPolicy)
                     }
                     wordBuffer.clear()
                     refreshSuggestions()
@@ -105,8 +105,8 @@ class MangoImeService : InputMethodService() {
 
         ic.commitText(" ", 1)
 
-        if (inputContext.canLearn && typed.isNotBlank()) {
-            engine.learn(typed, previous)
+        if (fieldPolicy.canLearn && typed.isNotBlank()) {
+            engine.learn(typed, previous, policy = fieldPolicy)
         }
 
         wordBuffer.clear()
@@ -133,8 +133,8 @@ class MangoImeService : InputMethodService() {
 
         ic.commitText(word + " ", 1)
 
-        if (inputContext.canLearn) {
-            engine.learn(word, previous)
+        if (fieldPolicy.canLearn) {
+            engine.learn(word, previous, policy = fieldPolicy)
         }
 
         wordBuffer.clear()
@@ -146,7 +146,7 @@ class MangoImeService : InputMethodService() {
         val ic = currentInputConnection ?: return
         val previous = previousWord(ic)
 
-        val prediction = engine.glide(raw, previous)
+        val prediction = engine.glide(raw, previous, policy = fieldPolicy)
 
         if (prediction == null) {
             for (c in raw) onCharacter(c)
@@ -155,8 +155,8 @@ class MangoImeService : InputMethodService() {
 
         ic.commitText(prediction.word + " ", 1)
 
-        if (inputContext.canLearn) {
-            engine.learn(prediction.word, previous)
+        if (fieldPolicy.canLearn) {
+            engine.learn(prediction.word, previous, policy = fieldPolicy)
         }
 
         wordBuffer.clear()
@@ -171,12 +171,14 @@ class MangoImeService : InputMethodService() {
 
     fun currentShifted(): Boolean = shift || capsLock
 
+    fun getFieldPolicy(): FieldPolicy = fieldPolicy
+
     fun refreshSuggestions() {
         if (!::keyboard.isInitialized) return
         val previous = previousWord(currentInputConnection)
-        val list = engine.suggestions(wordBuffer.toString(), previous, 3)
+        val candidates = engine.suggestions(wordBuffer.toString(), previous1 = previous, policy = fieldPolicy, limit = 3)
             .map { it.word }
-        keyboard.setSuggestions(list)
+        keyboard.setSuggestions(candidates, fieldPolicy.isPrivate)
     }
 
     private fun previousWord(ic: InputConnection?): String? {
